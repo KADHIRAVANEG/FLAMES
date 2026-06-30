@@ -1,14 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { TestPacket, PolicyTraceEntry } from "@fortisim/engine";
 
 interface PacketFlowPanelProps {
   traces: { packet: TestPacket; trace: PolicyTraceEntry[]; finalAction: "ACCEPT" | "DENY" }[];
 }
 
+const NODE_HEIGHT = 46;
+const NODE_GAP = 14;
+const NODE_WIDTH = 260;
+const WIRE_X = 24;
+const TOP_PADDING = 36;
+
 export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
   const [index, setIndex] = useState(0);
-  const [visibleSteps, setVisibleSteps] = useState(0);
-  const [showResult, setShowResult] = useState(false);
+  const [activeNode, setActiveNode] = useState(-1);
+  const [packetY, setPacketY] = useState(TOP_PADDING);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const current = traces[index];
 
@@ -17,22 +25,35 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
   }, [traces.length]);
 
   useEffect(() => {
-    setVisibleSteps(0);
-    setShowResult(false);
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+    setActiveNode(-1);
+    setPacketY(TOP_PADDING);
+    setShowTerminal(false);
+
     if (!current) return;
 
-    const totalSteps = current.trace.length;
-    let step = 0;
-    const interval = setInterval(() => {
-      step += 1;
-      setVisibleSteps(step);
-      if (step >= totalSteps) {
-        clearInterval(interval);
-        setTimeout(() => setShowResult(true), 300);
-      }
-    }, 400);
+    const stepHeight = NODE_HEIGHT + NODE_GAP;
+    let delay = 250;
 
-    return () => clearInterval(interval);
+    current.trace.forEach((step, i) => {
+      const nodeCenterY = TOP_PADDING + i * stepHeight + NODE_HEIGHT / 2;
+      const t1 = setTimeout(() => {
+        setPacketY(nodeCenterY);
+        setActiveNode(i);
+      }, delay);
+      timeoutsRef.current.push(t1);
+      delay += 480;
+    });
+
+    const tFinal = setTimeout(() => {
+      setShowTerminal(true);
+    }, delay + 150);
+    timeoutsRef.current.push(tFinal);
+
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+    };
   }, [index, current]);
 
   if (traces.length === 0) {
@@ -54,6 +75,11 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
     if (index > 0) setIndex(index - 1);
   }
 
+  const stepHeight = NODE_HEIGHT + NODE_GAP;
+  const wireBottom = TOP_PADDING + current.trace.length * stepHeight;
+  const svgHeight = wireBottom + 70;
+  const matchedIndex = current.trace.findIndex((s) => s.matched);
+
   return (
     <div className="bg-white border border-gray-200 rounded-md overflow-hidden sticky top-4">
       <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
@@ -62,59 +88,92 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
       </div>
 
       <div className="p-4">
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-3">
-          <div className="text-[12px] font-medium text-gray-800 mb-1.5">{current.packet.description}</div>
-          <div className="text-[11px] text-gray-600 font-mono leading-relaxed">
-            <div>{current.packet.srcIp} ({current.packet.srcIntf}) → {current.packet.dstIp} ({current.packet.dstIntf})</div>
-            <div>{current.packet.protocol}{current.packet.port !== undefined ? `/${current.packet.port}` : ""}</div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 mb-3">
+          <div className="text-[11.5px] font-medium text-gray-800 mb-1">{current.packet.description}</div>
+          <div className="text-[10.5px] text-gray-600 font-mono">
+            {current.packet.srcIp} → {current.packet.dstIp} · {current.packet.protocol}
+            {current.packet.port !== undefined ? `/${current.packet.port}` : ""}
           </div>
         </div>
 
-        <div className="space-y-1.5 mb-3">
-          {current.trace.slice(0, visibleSteps).map((step, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-2 p-2 rounded border text-[11px] ${
-                step.matched ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-gray-50"
-              }`}
-              style={{ animation: "fadeSlideIn 0.25s ease-out" }}
+        <svg width="100%" height={svgHeight} viewBox={`0 0 ${NODE_WIDTH + 40} ${svgHeight}`} className="block">
+          <line
+            x1={WIRE_X} y1={4}
+            x2={WIRE_X} y2={wireBottom + 20}
+            stroke="#d1d5db" strokeWidth={2}
+          />
+
+          {current.trace.map((step, i) => {
+            const y = TOP_PADDING + i * stepHeight;
+            const isPast = i < activeNode || (i === activeNode && showTerminal);
+            const isActive = i === activeNode && !showTerminal;
+            const nodeColor = step.matched
+              ? "#10b981"
+              : isPast || isActive
+                ? "#9ca3af"
+                : "#e5e7eb";
+            return (
+              <g key={i} style={{ transition: "opacity 0.2s" }} opacity={i <= activeNode ? 1 : 0.35}>
+                <circle cx={WIRE_X} cy={y + NODE_HEIGHT / 2} r={5} fill={nodeColor} />
+                <rect
+                  x={WIRE_X + 16} y={y}
+                  width={NODE_WIDTH - WIRE_X} height={NODE_HEIGHT}
+                  rx={5}
+                  fill={step.matched ? "#ecfdf5" : "#f9fafb"}
+                  stroke={step.matched ? "#6ee7b7" : "#e5e7eb"}
+                  strokeWidth={1.5}
+                />
+                <text x={WIRE_X + 26} y={y + 18} fontSize="11" fontWeight={600} fill="#1f2937">
+                  {step.policyName.length > 28 ? step.policyName.slice(0, 26) + "…" : step.policyName}
+                </text>
+                <text x={WIRE_X + 26} y={y + 33} fontSize="9.5" fill="#6b7280">
+                  {step.reason.length > 42 ? step.reason.slice(0, 40) + "…" : step.reason}
+                </text>
+                {step.matched && (
+                  <text x={NODE_WIDTH - 6} y={y + 18} fontSize="9" fontWeight={700} fill="#059669" textAnchor="end">
+                    MATCH
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {!showTerminal && (
+            <circle
+              cx={WIRE_X}
+              cy={packetY}
+              r={7}
+              fill="#DA291C"
+              style={{ transition: "cy 0.4s cubic-bezier(0.4, 0, 0.2, 1)" }}
             >
-              <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5 ${
-                step.matched ? "bg-emerald-500 text-white" : "bg-gray-300 text-gray-600"
-              }`}>
-                {i + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-800">{step.policyName}</div>
-                <div className="text-gray-500">{step.reason}</div>
-              </div>
-            </div>
-          ))}
-          {visibleSteps < current.trace.length && (
-            <div className="flex items-center gap-2 text-[10.5px] text-gray-400 px-2 py-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-pulse"></div>
-              checking…
-            </div>
+              <animate attributeName="r" values="7;9;7" dur="0.8s" repeatCount="indefinite" />
+            </circle>
           )}
-        </div>
 
-        {showResult && (
-          <div
-            className={`flex items-center justify-center gap-2 p-3 rounded-md border-2 mb-3 ${
-              current.finalAction === "ACCEPT" ? "border-emerald-400 bg-emerald-50" : "border-red-400 bg-red-50"
-            }`}
-            style={{ animation: "popIn 0.3s ease-out" }}
-          >
-            <span className={`text-[15px] font-bold ${current.finalAction === "ACCEPT" ? "text-emerald-600" : "text-red-600"}`}>
-              {current.finalAction === "ACCEPT" ? "✓ ACCEPTED" : "✕ DENIED"}
-            </span>
-            {current.trace.every((s) => !s.matched) && (
-              <span className="text-[10px] text-gray-500">(default-deny)</span>
-            )}
-          </div>
-        )}
+          {showTerminal && (
+            <g style={{ animation: "popIn 0.3s ease-out" }}>
+              <rect
+                x={WIRE_X + 16} y={wireBottom}
+                width={NODE_WIDTH - WIRE_X} height={36}
+                rx={5}
+                fill={current.finalAction === "ACCEPT" ? "#ecfdf5" : "#fef2f2"}
+                stroke={current.finalAction === "ACCEPT" ? "#34d399" : "#f87171"}
+                strokeWidth={2}
+              />
+              <text
+                x={WIRE_X + 16 + (NODE_WIDTH - WIRE_X) / 2} y={wireBottom + 23}
+                fontSize="13" fontWeight={700}
+                fill={current.finalAction === "ACCEPT" ? "#059669" : "#dc2626"}
+                textAnchor="middle"
+              >
+                {current.finalAction === "ACCEPT" ? "✓ ACCEPTED" : "✕ DENIED"}
+                {matchedIndex === -1 ? " (default-deny)" : ""}
+              </text>
+            </g>
+          )}
+        </svg>
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
           <button
             onClick={goPrev}
             disabled={index === 0}
@@ -138,10 +197,6 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
       </div>
 
       <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateX(-6px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
         @keyframes popIn {
           from { opacity: 0; transform: scale(0.92); }
           to { opacity: 1; transform: scale(1); }
