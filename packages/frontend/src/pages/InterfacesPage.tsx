@@ -16,7 +16,8 @@ export function InterfacesPage() {
   const [ifaceAiRemark, setIfaceAiRemark] = useState<string | null>(null);
   const [ifaceError, setIfaceError] = useState<string | null>(null);
 
-  const portScenario = ALL_PORT_SCENARIOS[0];
+  const [activePortScenarioId, setActivePortScenarioId] = useState<string>(ALL_PORT_SCENARIOS[0].id);
+  const portScenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId)!;
   const [portAssignments, setPortAssignments] = useState<PortAssignment[]>(
     portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked }))
   );
@@ -33,6 +34,15 @@ export function InterfacesPage() {
       setIfaceError(null);
     }
   }, [activeIfaceScenarioId]);
+
+  useEffect(() => {
+    const scenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId);
+    if (scenario) {
+      setPortAssignments(scenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })));
+      setPortReport(null);
+      setPortError(null);
+    }
+  }, [activePortScenarioId]);
 
   function updateField(name: string, field: keyof InterfaceConfig, value: string | string[]) {
     setInterfaces((prev) => prev.map((i) => i.name === name ? { ...i, [field]: value } : i));
@@ -213,8 +223,28 @@ export function InterfacesPage() {
       {track === "port" && (
         <>
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
+            <div className="text-[13px] font-medium text-gray-700 mb-3">Select Exercise</div>
+            <div className="space-y-2">
+              {ALL_PORT_SCENARIOS.map((s, idx) => (
+                <div
+                  key={s.id}
+                  onClick={() => setActivePortScenarioId(s.id)}
+                  className={`flex items-start gap-3 p-3 rounded border cursor-pointer transition-colors ${activePortScenarioId === s.id ? "border-forti-red bg-red-50" : "border-gray-200 hover:bg-gray-50"}`}
+                >
+                  <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 text-[11px] font-bold ${activePortScenarioId === s.id ? "border-forti-red text-forti-red" : "border-gray-300 text-gray-400"}`}>
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-medium text-gray-800">{s.title}</div>
+                    <div className="text-[12px] text-gray-500 mt-0.5">{s.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
             <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario.title}</div>
-            <p className="text-[12.5px] text-gray-500 mb-4">{portScenario.description}</p>
             <ChassisDiagram ports={portAssignments} onChange={handlePortChange} />
           </div>
 
