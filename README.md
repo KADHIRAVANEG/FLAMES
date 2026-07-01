@@ -146,6 +146,55 @@ flowchart TB
 
 ```
 
+-----
+
+```mermaid
+flowchart TD
+    %% Styling Definitions
+    classDef p1 fill:#4a4a4a,stroke:#888,color:#fff
+    classDef p2 fill:#4b367c,stroke:#775ba0,color:#fff
+    classDef p3 fill:#0f6b58,stroke:#268d77,color:#fff
+    classDef p4 fill:#9a6b18,stroke:#c48d28,color:#fff
+    classDef p5 fill:#a03c20,stroke:#c4583b,color:#fff
+    classDef p6 fill:#296e9c,stroke:#4a8dbd,color:#fff
+    classDef decision fill:#fdf5e6,stroke:#d4a017,color:#000
+
+    %% Phase 1
+    P1[Phase 1 — Requirement analysis]:::p1
+    P1 --> S1_1[Identify user types]:::p1
+    P1 --> S1_2[Define feature list]:::p1
+    P1 --> S1_3[Review base papers]:::p1
+    
+    %% Phase 2
+    S1_1 & S1_2 & S1_3 --> P2[Phase 2 — System design]:::p2
+    P2 --> S2_1[Multi-zone topology]:::p2
+    P2 --> S2_2[Rule engine schema]:::p2
+    P2 --> S2_3[UI/UX wireframes]:::p2
+    
+    %% Phase 3
+    S2_1 & S2_2 & S2_3 --> P3[Phase 3 — Development]:::p3
+    P3 --> S3_1[Packet simulator]:::p3
+    P3 --> S3_2[Rule conflict engine]:::p3
+    P3 --> S3_3[Zone topology UI]:::p3
+    P3 --> S3_4[Docker containers]:::p3
+    
+    %% Phase 4
+    S3_1 & S3_2 & S3_3 & S3_4 --> P4[Phase 4 — Testing & validation]:::p4
+    P4 --> Test{All tests pass?}:::decision
+    
+    %% Rework Loop
+    Test -- No --> P3
+    
+    %% Phase 5
+    Test -- Yes --> P5[Phase 5 — Evaluation]:::p5
+    P5 --> S5_1[Packet delivery rate]:::p5
+    P5 --> S5_2[Rule accuracy score]:::p5
+    P5 --> S5_3[User feedback survey]:::p5
+    
+    %% Phase 6
+    S5_1 & S5_2 & S5_3 --> P6[Phase 6 — Deployment & documentation]:::p6
+    P6 --> Finish([Project complete])
+```
 
 ## Additional naming ideas
 
