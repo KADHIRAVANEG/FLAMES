@@ -25,7 +25,7 @@ function findBreadcrumb(pathname: string): string[] {
     }
     if (pathname === item.path) return [item.label];
   }
-  return ["Dashboard"];
+  return ["Tasks"];
 }
 
 export function AppShell({ children }: AppShellProps) {

@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import type { AdminAccess, InterfaceConfig, InterfaceGradingReport, PortGradingReport } from "@fortisim/engine";
 import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS } from "@fortisim/engine";
 import { ChassisDiagram } from "../components/policyObjects/ChassisDiagram";
 import type { PortZone, PortAssignment } from "../components/policyObjects/ChassisDiagram";
+import { InterfaceTopology } from "../components/policyObjects/InterfaceTopology";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
 const ADMIN_ACCESS_OPTIONS: AdminAccess[] = ["PING", "HTTPS", "SSH", "HTTP"];
@@ -13,15 +15,24 @@ interface InterfacesPageProps {
 }
 
 export function InterfacesPage({ session }: InterfacesPageProps) {
-  const [track, setTrack] = useState<TrackType>("interface");
-  const [activeIfaceScenarioId, setActiveIfaceScenarioId] = useState<string>(ALL_INTERFACE_SCENARIOS[0].id);
+  const [searchParams] = useSearchParams();
+  const urlTrack = searchParams.get("track");
+  const urlScenario = searchParams.get("scenario");
+  const cameFromTask = !!urlScenario;
+
+  const [track, setTrack] = useState<TrackType>(urlTrack === "port" ? "port" : "interface");
+  const [activeIfaceScenarioId, setActiveIfaceScenarioId] = useState<string>(
+    urlTrack === "interface" && urlScenario ? urlScenario : ALL_INTERFACE_SCENARIOS[0].id
+  );
   const [interfaces, setInterfaces] = useState<InterfaceConfig[]>([]);
   const [ifaceGrading, setIfaceGrading] = useState(false);
   const [ifaceReport, setIfaceReport] = useState<InterfaceGradingReport | null>(null);
   const [ifaceAiRemark, setIfaceAiRemark] = useState<string | null>(null);
   const [ifaceError, setIfaceError] = useState<string | null>(null);
 
-  const [activePortScenarioId, setActivePortScenarioId] = useState<string>(ALL_PORT_SCENARIOS[0].id);
+  const [activePortScenarioId, setActivePortScenarioId] = useState<string>(
+    urlTrack === "port" && urlScenario ? urlScenario : ALL_PORT_SCENARIOS[0].id
+  );
   const portScenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId)!;
   const [portAssignments, setPortAssignments] = useState<PortAssignment[]>(
     portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked }))
@@ -117,22 +128,41 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
   return (
     <div className="max-w-4xl">
+      {cameFromTask && (
+        <Link to="/" className="inline-block text-[12px] text-forti-red hover:underline mb-3">
+          ← Back to Tasks
+        </Link>
+      )}
       <h1 className="text-lg font-semibold text-forti-dark mb-1">Interfaces</h1>
       <p className="text-gray-500 text-[12.5px] mb-4">
         Configure network interfaces and assign physical ports to zones before writing firewall policies.
       </p>
 
-      <div className="flex gap-2 mb-5">
-        <button onClick={() => setTrack("interface")} className={`px-4 py-1.5 rounded-sm text-[12.5px] border transition-colors ${track === "interface" ? "bg-forti-red text-white border-forti-red" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}>
-          Interface Configuration
-        </button>
-        <button onClick={() => setTrack("port")} className={`px-4 py-1.5 rounded-sm text-[12.5px] border transition-colors ${track === "port" ? "bg-forti-red text-white border-forti-red" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}>
-          Port Assignment
-        </button>
-      </div>
+      {!cameFromTask && (
+        <div className="flex gap-2 mb-5">
+          <button onClick={() => setTrack("interface")} className={`px-4 py-1.5 rounded-sm text-[12.5px] border transition-colors ${track === "interface" ? "bg-forti-red text-white border-forti-red" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}>
+            Interface Configuration
+          </button>
+          <button onClick={() => setTrack("port")} className={`px-4 py-1.5 rounded-sm text-[12.5px] border transition-colors ${track === "port" ? "bg-forti-red text-white border-forti-red" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}>
+            Port Assignment
+          </button>
+        </div>
+      )}
 
       {track === "interface" && (
         <>
+          {(() => {
+            const activeScenario = ALL_INTERFACE_SCENARIOS.find((s) => s.id === activeIfaceScenarioId);
+            if (!activeScenario) return null;
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-5">
+                <div className="text-[13px] font-semibold text-amber-900 mb-1">{activeScenario.title}</div>
+                <p className="text-[12.5px] text-amber-800 leading-relaxed">{activeScenario.description}</p>
+              </div>
+            );
+          })()}
+
+          {!cameFromTask && (
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
             <div className="text-[13px] font-medium text-gray-700 mb-3">Select Exercise</div>
             <div className="space-y-2">
@@ -149,6 +179,18 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
                 );
               })}
             </div>
+          </div>
+          )}
+
+          <div className="mb-5">
+            <InterfaceTopology
+              interfaces={interfaces}
+              focus={
+                activeIfaceScenarioId === "interface-ip-01" ? "ip"
+                : activeIfaceScenarioId === "interface-access-01" ? "access"
+                : "all"
+              }
+            />
           </div>
 
           <div className="bg-white border border-gray-200 rounded-md overflow-hidden mb-5">
@@ -237,6 +279,12 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
       {track === "port" && (
         <>
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-5">
+            <div className="text-[13px] font-semibold text-amber-900 mb-1">{portScenario.title}</div>
+            <p className="text-[12.5px] text-amber-800 leading-relaxed">{portScenario.description}</p>
+          </div>
+
+          {!cameFromTask && (
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
             <div className="text-[13px] font-medium text-gray-700 mb-3">Select Exercise</div>
             <div className="space-y-2">
@@ -260,6 +308,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
               })}
             </div>
           </div>
+          )}
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
             <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario.title}</div>
