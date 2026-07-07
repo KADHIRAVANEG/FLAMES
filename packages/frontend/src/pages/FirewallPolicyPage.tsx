@@ -44,6 +44,9 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   const [flowTraces, setFlowTraces] = useState<
     { packet: TestPacket; trace: PolicyTraceEntry[]; finalAction: "ACCEPT" | "DENY" }[]
   >([]);
+  const [activeFlow, setActiveFlow] = useState<
+    { srcZone: InterfaceZone; dstZone: InterfaceZone; action: "ACCEPT" | "DENY" } | null
+  >(null);
 
   const [grading, setGrading] = useState(false);
   const [gradeReport, setGradeReport] = useState<any>(null);
@@ -127,6 +130,14 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       return { packet, trace: result.trace, finalAction: result.finalAction };
     });
     setFlowTraces(traces);
+    if (traces.length > 0) {
+      const first = traces[0];
+      setActiveFlow({
+        srcZone: first.packet.srcIntf,
+        dstZone: first.packet.dstIntf,
+        action: first.finalAction,
+      });
+    }
   }
 
   async function submitForGrading() {
@@ -483,7 +494,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       </div>
 
       <div className="space-y-4">
-        <NetworkTopology addresses={addresses} />
+        <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} />
       </div>
     </div>
