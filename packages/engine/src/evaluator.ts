@@ -1,16 +1,11 @@
-// ============================================================================
-// The Evaluator: first-match-wins policy evaluation.
-// Used by BOTH the frontend's local "test connectivity" tool AND the
-// backend's authoritative grading. One implementation only.
-// ============================================================================
-
 import {
-  AddressObject,
   FirewallPolicy,
-  ServiceObject,
   TestPacket,
+  AddressObject,
+  ServiceObject,
+  WebFilterProfile,
 } from "./types";
-import { ipMatchesAddressValue, portMatchesServiceValue } from "./matching";
+import { ipMatchesAddress, portMatchesService } from "./matching";
 
 export interface PolicyTraceEntry {
   policyId: string;
@@ -20,116 +15,72 @@ export interface PolicyTraceEntry {
 }
 
 export interface EvaluationResult {
-  packetId: string;
   finalAction: "ACCEPT" | "DENY";
   matchedPolicyId: string | null;
-  loggedByPolicy: boolean;
+  webFiltered: boolean;
   trace: PolicyTraceEntry[];
-}
-
-function buildLookup<T extends { id: string }>(items: T[]): Map<string, T> {
-  return new Map(items.map((item) => [item.id, item]));
-}
-
-function policyMatchesPacket(
-  policy: FirewallPolicy,
-  packet: TestPacket,
-  addressLookup: Map<string, AddressObject>,
-  serviceLookup: Map<string, ServiceObject>
-): { matched: boolean; reason: string } {
-  if (!policy.enabled) {
-    return { matched: false, reason: "policy is disabled" };
-  }
-
-  if (policy.srcIntf !== packet.srcIntf) {
-    return {
-      matched: false,
-      reason: `source interface mismatch (policy: ${policy.srcIntf}, packet: ${packet.srcIntf})`,
-    };
-  }
-  if (policy.dstIntf !== packet.dstIntf) {
-    return {
-      matched: false,
-      reason: `destination interface mismatch (policy: ${policy.dstIntf}, packet: ${packet.dstIntf})`,
-    };
-  }
-
-  const srcAddrMatch = policy.srcAddrIds.some((id) => {
-    const addr = addressLookup.get(id);
-    if (!addr) return false;
-    return ipMatchesAddressValue(packet.srcIp, addr.type, addr.value);
-  });
-  if (!srcAddrMatch) {
-    return { matched: false, reason: "source address does not match any policy source object" };
-  }
-
-  const dstAddrMatch = policy.dstAddrIds.some((id) => {
-    const addr = addressLookup.get(id);
-    if (!addr) return false;
-    return ipMatchesAddressValue(packet.dstIp, addr.type, addr.value);
-  });
-  if (!dstAddrMatch) {
-    return { matched: false, reason: "destination address does not match any policy destination object" };
-  }
-
-  const serviceMatch = policy.serviceIds.some((id) => {
-    const svc = serviceLookup.get(id);
-    if (!svc) return false;
-    if (svc.protocol !== packet.protocol) return false;
-    if (svc.protocol === "ICMP") return true;
-    if (!svc.port || packet.port === undefined) return false;
-    return portMatchesServiceValue(packet.port, svc.port);
-  });
-  if (!serviceMatch) {
-    return { matched: false, reason: "protocol/port does not match any policy service object" };
-  }
-
-  return { matched: true, reason: "all match criteria satisfied" };
 }
 
 export function evaluatePacket(
   packet: TestPacket,
   policies: FirewallPolicy[],
   addresses: AddressObject[],
-  services: ServiceObject[]
+  services: ServiceObject[],
+  webFilterProfiles: WebFilterProfile[] = []
 ): EvaluationResult {
-  const addressLookup = buildLookup(addresses);
-  const serviceLookup = buildLookup(services);
   const trace: PolicyTraceEntry[] = [];
 
   for (const policy of policies) {
-    const { matched, reason } = policyMatchesPacket(policy, packet, addressLookup, serviceLookup);
-    trace.push({
-      policyId: policy.id,
-      policyName: policy.name,
-      matched,
-      reason,
-    });
-    if (matched) {
-      return {
-        packetId: packet.id,
-        finalAction: policy.action,
-        matchedPolicyId: policy.id,
-        loggedByPolicy: policy.log,
-        trace,
-      };
+    if (!policy.enabled) continue;
+
+    const srcIntfMatch = policy.srcIntf === packet.srcIntf;
+    const dstIntfMatch = policy.dstIntf === packet.dstIntf;
+
+    if (!srcIntfMatch || !dstIntfMatch) {
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: `Interface mismatch (${packet.srcIntf}→${packet.dstIntf} vs ${policy.srcIntf}→${policy.dstIntf})` });
+      continue;
     }
+
+    const srcAddrs = policy.srcAddrIds.map((id) => addresses.find((a) => a.id === id)).filter(Boolean) as AddressObject[];
+    const dstAddrs = policy.dstAddrIds.map((id) => addresses.find((a) => a.id === id)).filter(Boolean) as AddressObject[];
+    const svcs = policy.serviceIds.map((id) => services.find((s) => s.id === id)).filter(Boolean) as ServiceObject[];
+
+    const srcMatch = srcAddrs.length === 0 || srcAddrs.some((a) => ipMatchesAddress(packet.srcIp, a));
+    const dstMatch = dstAddrs.length === 0 || dstAddrs.some((a) => ipMatchesAddress(packet.dstIp, a));
+    const svcMatch = svcs.length === 0 || svcs.some((s) => portMatchesService(packet.protocol, packet.port, s));
+
+    if (!srcMatch || !dstMatch || !svcMatch) {
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: !srcMatch ? "Source address no match" : !dstMatch ? "Destination address no match" : "Service no match" });
+      continue;
+    }
+
+    if (policy.action === "ACCEPT" && policy.webFilterProfileId && packet.domain) {
+      const profile = webFilterProfiles.find((p) => p.id === policy.webFilterProfileId);
+      if (profile) {
+        const blocked = profile.blockedDomains.some(
+          (d) => packet.domain === d || packet.domain!.endsWith(`.${d}`)
+        );
+        if (blocked) {
+          trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Policy matched but domain "${packet.domain}" blocked by Web Filter profile "${profile.name}"` });
+          return { finalAction: "DENY", matchedPolicyId: policy.id, webFiltered: true, trace };
+        }
+      }
+    }
+
+    trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Matched — ${policy.action}` });
+    return { finalAction: policy.action, matchedPolicyId: policy.id, webFiltered: false, trace };
   }
 
-  return {
-    packetId: packet.id,
-    finalAction: "DENY",
-    matchedPolicyId: null,
-    loggedByPolicy: false,
-    trace,
-  };
+  trace.push({ policyId: "implicit-deny", policyName: "Implicit Default Deny", matched: true, reason: "No policy matched — default deny" });
+  return { finalAction: "DENY", matchedPolicyId: null, webFiltered: false, trace };
 }
 
 export function evaluateAll(
   packets: TestPacket[],
   policies: FirewallPolicy[],
   addresses: AddressObject[],
-  services: ServiceObject[]
+  services: ServiceObject[],
+  webFilterProfiles: WebFilterProfile[] = []
 ): EvaluationResult[] {
-  return packets.map((p) => evaluatePacket(p, policies, addresses, services));
+  return packets.map((p) => evaluatePacket(p, policies, addresses, services, webFilterProfiles));
 }

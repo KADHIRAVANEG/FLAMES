@@ -1,9 +1,13 @@
 import { Scenario } from "@fortisim/engine";
-import { webServerAccessScenario } from "@fortisim/engine";
-import { dbLockdownScenario } from "@fortisim/engine";
-import { dmzMultiServiceScenario } from "@fortisim/engine";
-import { interZoneTrustScenario } from "@fortisim/engine";
-import { fullNetworkPolicyScenario } from "@fortisim/engine";
+import {
+  webServerAccessScenario,
+  dbLockdownScenario,
+  dmzMultiServiceScenario,
+  interZoneTrustScenario,
+  fullNetworkPolicyScenario,
+  multiSystemScenario,
+  webFilterScenario,
+} from "@fortisim/engine";
 
 const allScenarios: Scenario[] = [
   webServerAccessScenario,
@@ -11,9 +15,11 @@ const allScenarios: Scenario[] = [
   dmzMultiServiceScenario,
   interZoneTrustScenario,
   fullNetworkPolicyScenario,
+  multiSystemScenario,
+  webFilterScenario,
 ];
 
-export function listScenarios(): Pick<Scenario, "id" | "title" | "description">[] {
+export function listScenarios() {
   return allScenarios.map(({ id, title, description }) => ({ id, title, description }));
 }
 
