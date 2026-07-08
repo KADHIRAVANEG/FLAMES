@@ -7,6 +7,8 @@ export * from "./dbLockdownScenario";
 export * from "./dmzMultiServiceScenario";
 export * from "./interZoneTrustScenario";
 export * from "./fullNetworkPolicyScenario";
+export * from "./multiSystemScenario";
+export * from "./webFilterScenario";
 export * from "./interfaceTypes";
 export * from "./interfaceGrader";
 export * from "./interfaceScenarios";
