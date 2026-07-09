@@ -36,10 +36,8 @@ export async function getFeedbackForReport(
     `Failing checks (${failing.length}/${report.totalChecks}):`,
     ...failing.map(
       (d) =>
-        `- "${d.description}": expected action ${d.expectedAction}, actual action ${d.actualAction}` +
-        (d.matchedPolicyName
-          ? ` (matched the student's policy "${d.matchedPolicyName}")`
-          : " (no policy matched; implicit default-deny applied)")
+        `- "${d.description}": student's config resulted in ${d.studentAction}` +
+        (d.webFiltered ? " (blocked by Web Filter profile)" : " (no matching policy or wrong action)")
     ),
   ].join("\n");
 
