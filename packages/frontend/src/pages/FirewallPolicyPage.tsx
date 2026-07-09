@@ -1,4 +1,37 @@
 import { useState } from "react";
+import { useState as useLocalState } from "react";
+import type { WebFilterProfile } from "@fortisim/engine";
+
+function WebFilterProfileForm({ onAdd }: { onAdd: (p: WebFilterProfile) => void }) {
+  const [name, setName] = useLocalState("");
+  const [domains, setDomains] = useLocalState("");
+
+  function handleAdd() {
+    if (!name.trim()) { alert("Profile needs a name."); return; }
+    onAdd({
+      id: `wf_${Date.now()}`,
+      name: name.trim(),
+      blockedDomains: domains.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean),
+    });
+    setName("");
+    setDomains("");
+  }
+
+  return (
+    <div className="flex gap-2 items-end">
+      <div className="flex-1">
+        <label className="block text-[11px] text-gray-500 mb-1">Profile Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-[12px]" placeholder="e.g. Block-Social-Media" />
+      </div>
+      <div className="flex-1">
+        <label className="block text-[11px] text-gray-500 mb-1">Blocked Domains (comma-separated)</label>
+        <input value={domains} onChange={(e) => setDomains(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-1.5 text-[12px] font-mono" placeholder="instagram.com, facebook.com" />
+      </div>
+      <button onClick={handleAdd} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12px] hover:bg-forti-red/90 shrink-0">Add Profile</button>
+    </div>
+  );
+}
+
 import type {
   FirewallPolicy,
   TestPacket,
@@ -32,7 +65,7 @@ function emptyPolicyDraft(): Omit<FirewallPolicy, "id"> {
 }
 
 export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
-  const { scenarioId, scenario, loadError, addresses, services, policies, setPolicies } = session;
+  const { scenarioId, scenario, loadError, addresses, services, policies, setPolicies, webFilterProfiles, setWebFilterProfiles } = session;
 
   const [draft, setDraft] = useState<Omit<FirewallPolicy, "id">>(emptyPolicyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -150,6 +183,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         scenarioId,
         addresses,
         services,
+        webFilterProfiles,
         policies,
       });
       setGradeReport(report);
@@ -394,6 +428,22 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             </label>
           </div>
 
+          {webFilterProfiles.length > 0 && (
+            <div className="flex items-center gap-2 mb-4">
+              <label className="text-[11px] text-gray-500">Web Filter Profile</label>
+              <select
+                value={draft.webFilterProfileId ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, webFilterProfileId: e.target.value || undefined }))}
+                className="border border-gray-300 rounded px-2 py-1 text-[12.5px]"
+              >
+                <option value="">None</option>
+                {webFilterProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               onClick={savePolicy}
@@ -411,6 +461,31 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             )}
           </div>
         </div>
+
+        {(scenario.starterWebFilterProfiles !== undefined) && (
+          <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
+            <div className="text-[13px] font-medium text-gray-700 mb-3">Web Filter Profiles</div>
+            <p className="text-[11.5px] text-gray-400 mb-3">
+              Create a profile with blocked domains, then attach it to a policy using the "Web Filter Profile" field below.
+            </p>
+            <div className="space-y-2 mb-3">
+              {webFilterProfiles.map((profile) => (
+                <div key={profile.id} className="flex items-start justify-between border border-gray-200 rounded p-2.5 text-[12.5px]">
+                  <div>
+                    <div className="font-medium text-gray-800">{profile.name}</div>
+                    <div className="text-gray-400 text-[11px] mt-0.5">Blocks: {profile.blockedDomains.join(", ") || "—"}</div>
+                  </div>
+                  <button onClick={() => setWebFilterProfiles((prev) => prev.filter((p) => p.id !== profile.id))} className="text-gray-400 hover:text-red-500 text-[11px]">✕</button>
+                </div>
+              ))}
+              {webFilterProfiles.length === 0 && <div className="text-gray-400 text-[12px]">No profiles yet — add one below.</div>}
+            </div>
+            <WebFilterProfileForm onAdd={(profile) => setWebFilterProfiles((prev) => [...prev, profile])} />
+            <div className="mt-3 text-[11.5px] text-gray-500">
+              To attach a profile to a policy: edit the policy and select a Web Filter Profile from the dropdown.
+            </div>
+          </div>
+        )}
 
         <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
           <div className="flex items-center justify-between mb-3">

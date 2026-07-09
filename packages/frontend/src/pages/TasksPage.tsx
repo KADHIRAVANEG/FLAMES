@@ -48,6 +48,8 @@ export function TasksPage({ session }: TasksPageProps) {
     { id: policyScenarios[3].id, title: policyScenarios[3].title, description: policyScenarios[3].description, track: "policy", difficulty: 6 },
     { id: ALL_PORT_SCENARIOS[4].id, title: ALL_PORT_SCENARIOS[4].title, description: ALL_PORT_SCENARIOS[4].description, track: "port", difficulty: 6 },
     { id: policyScenarios[4].id, title: policyScenarios[4].title, description: policyScenarios[4].description, track: "policy", difficulty: 7 },
+    { id: policyScenarios[5].id, title: policyScenarios[5].title, description: policyScenarios[5].description, track: "policy", difficulty: 8 },
+    { id: policyScenarios[6].id, title: policyScenarios[6].title, description: policyScenarios[6].description, track: "policy", difficulty: 8 },
   ].sort((a, b) => a.difficulty - b.difficulty);
 
   const trackLabels: Record<string, string> = {
