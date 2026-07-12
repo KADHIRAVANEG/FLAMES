@@ -7,6 +7,9 @@ import {
   fullNetworkPolicyScenario,
   multiSystemScenario,
   webFilterScenario,
+  serverSegmentationScenario,
+  guestIsolationScenario,
+  multiDmzAccessScenario,
 } from "@fortisim/engine";
 
 const allScenarios: Scenario[] = [
@@ -17,6 +20,9 @@ const allScenarios: Scenario[] = [
   fullNetworkPolicyScenario,
   multiSystemScenario,
   webFilterScenario,
+  serverSegmentationScenario,
+  guestIsolationScenario,
+  multiDmzAccessScenario,
 ];
 
 export function listScenarios() {

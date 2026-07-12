@@ -9,6 +9,7 @@ export * from "./interZoneTrustScenario";
 export * from "./fullNetworkPolicyScenario";
 export * from "./multiSystemScenario";
 export * from "./webFilterScenario";
+export * from "./complexScenarios";
 export * from "./interfaceTypes";
 export * from "./interfaceGrader";
 export * from "./interfaceScenarios";
