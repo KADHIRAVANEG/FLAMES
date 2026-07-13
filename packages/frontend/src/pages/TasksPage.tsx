@@ -91,7 +91,6 @@ export function TasksPage({ session }: TasksPageProps) {
         <p className="text-gray-500 text-[12.5px]">Complete exercises across three tracks to master FortiGate firewall configuration.</p>
       </div>
 
-      {/* Progress */}
       <div className="bg-white border border-gray-200 rounded-md p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[13px] font-semibold text-gray-700">Overall Progress</span>
@@ -114,7 +113,6 @@ export function TasksPage({ session }: TasksPageProps) {
         </div>
       </div>
 
-      {/* Track groups */}
       {(["port", "interface", "policy"] as const).map((track) => {
         const meta = TRACK_META[track];
         const trackTasks = trackGroups[track];
