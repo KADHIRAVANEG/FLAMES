@@ -1,0 +1,350 @@
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.15)} }
+@keyframes travel { 0%{offset-distance:0%} 100%{offset-distance:100%} }
+.device { cursor:pointer; transition:filter .2s; }
+.device:hover { filter:brightness(1.1); }
+.pkt { width:10px; height:10px; border-radius:50%; position:absolute; pointer-events:none; transition:opacity .3s; }
+</style>
+
+<div style="position:relative;width:100%;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;padding:0">
+
+<div style="padding:12px 16px 8px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+  <div style="font-size:13px;font-weight:500;color:var(--text-primary)">FortiSim — Network Simulation</div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <div id="status-dot" style="width:7px;height:7px;border-radius:50%;background:#10b981"></div>
+    <span style="font-size:12px;color:var(--text-secondary)" id="status-txt">Ready</span>
+  </div>
+</div>
+
+<canvas id="net-canvas" style="width:100%;display:block"></canvas>
+
+<div style="padding:10px 16px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+  <div style="font-size:12px;color:var(--text-secondary)">Scenario:</div>
+  <select id="scenario-sel" style="font-size:12px;padding:4px 8px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface-2);color:var(--text-primary);flex:1;min-width:160px">
+    <option value="web">Web Server Access</option>
+    <option value="db">Database Lockdown</option>
+    <option value="block">Block System 2</option>
+    <option value="guest">Guest Network Isolation</option>
+  </select>
+  <button id="run-btn" onclick="runSim()" style="font-size:12px;padding:5px 14px;border-radius:6px;border:0.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);cursor:pointer;white-space:nowrap">▶ Run Test</button>
+  <button onclick="resetSim()" style="font-size:12px;padding:5px 14px;border-radius:6px;border:0.5px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer">Reset</button>
+</div>
+
+<div id="log-panel" style="padding:8px 16px 12px;font-size:11px;font-family:var(--font-mono);color:var(--text-secondary);min-height:48px;max-height:80px;overflow-y:auto;border-top:0.5px solid var(--border)"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('net-canvas');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+let W, H, nodes, packets = [], running = false;
+
+const SCENARIOS = {
+  web: {
+    name: 'Web Server Access',
+    packets: [
+      { from:'internet', to:'webserver', svc:'HTTPS/443', expect:'ACCEPT', color:'#10b981' },
+      { from:'internet', to:'webserver', svc:'SSH/22', expect:'DENY', color:'#ef4444' },
+      { from:'internet', to:'dbserver', svc:'SQL/5432', expect:'DENY', color:'#ef4444' },
+    ]
+  },
+  db: {
+    name: 'Database Lockdown',
+    packets: [
+      { from:'appserver', to:'dbserver', svc:'SQL/5432', expect:'ACCEPT', color:'#10b981' },
+      { from:'lan1', to:'dbserver', svc:'SQL/5432', expect:'DENY', color:'#ef4444' },
+      { from:'lan1', to:'webserver', svc:'HTTP/80', expect:'ACCEPT', color:'#10b981' },
+    ]
+  },
+  block: {
+    name: 'Block System 2',
+    packets: [
+      { from:'sys1', to:'webserver', svc:'HTTP/80', expect:'ACCEPT', color:'#10b981' },
+      { from:'sys2', to:'webserver', svc:'HTTP/80', expect:'DENY', color:'#ef4444' },
+      { from:'sys3', to:'webserver', svc:'HTTPS/443', expect:'ACCEPT', color:'#10b981' },
+    ]
+  },
+  guest: {
+    name: 'Guest Network Isolation',
+    packets: [
+      { from:'guest', to:'internet', svc:'HTTPS/443', expect:'ACCEPT', color:'#10b981' },
+      { from:'guest', to:'corp', svc:'HTTP/80', expect:'DENY', color:'#ef4444' },
+      { from:'corp', to:'internet', svc:'HTTPS/443', expect:'ACCEPT', color:'#10b981' },
+    ]
+  }
+};
+
+function getNodes(w, h) {
+  const cx = w/2, cy = h/2;
+  const fw = { x:cx, y:cy, label:'FortiGate', sub:'6000F', type:'fw', color:'#DA291C', bg:'#fee2e2' };
+  const sc = document.getElementById('scenario-sel').value;
+
+  if(sc==='web') return { fw,
+    internet: { x:cx-w*.32, y:cy-h*.1, label:'Internet', sub:'WAN', type:'cloud', color:'#6b7280', bg:'#f3f4f6' },
+    webserver: { x:cx+w*.28, y:cy-h*.18, label:'Web Server', sub:'10.0.2.10', type:'server', color:'#2563eb', bg:'#dbeafe' },
+    dbserver: { x:cx+w*.28, y:cy+h*.1, label:'DB Server', sub:'10.0.1.50', type:'server', color:'#7c3aed', bg:'#ede9fe' },
+  };
+  if(sc==='db') return { fw,
+    internet: { x:cx-w*.32, y:cy-h*.15, label:'Internet', sub:'WAN', type:'cloud', color:'#6b7280', bg:'#f3f4f6' },
+    appserver: { x:cx+w*.28, y:cy-h*.22, label:'App Server', sub:'10.0.1.10', type:'server', color:'#059669', bg:'#d1fae5' },
+    dbserver: { x:cx+w*.28, y:cy+h*.05, label:'DB Server', sub:'10.0.1.50', type:'server', color:'#7c3aed', bg:'#ede9fe' },
+    lan1: { x:cx-w*.08, y:cy-h*.3, label:'LAN Client', sub:'10.0.1.100', type:'pc', color:'#6b7280', bg:'#f3f4f6' },
+  };
+  if(sc==='block') return { fw,
+    internet: { x:cx-w*.32, y:cy-h*.1, label:'Internet', sub:'WAN', type:'cloud', color:'#6b7280', bg:'#f3f4f6' },
+    sys1: { x:cx-w*.1, y:cy-h*.32, label:'System 1', sub:'10.0.1.10', type:'pc', color:'#059669', bg:'#d1fae5' },
+    sys2: { x:cx+w*.12, y:cy-h*.32, label:'System 2', sub:'10.0.1.20', type:'pc', color:'#dc2626', bg:'#fee2e2' },
+    sys3: { x:cx+w*.34, y:cy-h*.18, label:'System 3', sub:'10.0.1.30', type:'pc', color:'#059669', bg:'#d1fae5' },
+    webserver: { x:cx+w*.3, y:cy+h*.1, label:'Web Server', sub:'10.0.2.10', type:'server', color:'#2563eb', bg:'#dbeafe' },
+  };
+  return { fw,
+    internet: { x:cx-w*.33, y:cy, label:'Internet', sub:'WAN', type:'cloud', color:'#6b7280', bg:'#f3f4f6' },
+    corp: { x:cx+w*.28, y:cy-h*.2, label:'Corporate', sub:'10.0.1.50', type:'pc', color:'#2563eb', bg:'#dbeafe' },
+    guest: { x:cx+w*.28, y:cy+h*.18, label:'Guest WiFi', sub:'10.0.1.201', type:'pc', color:'#d97706', bg:'#fef3c7' },
+  };
+}
+
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width;
+  H = Math.max(280, W * 0.45);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  nodes = getNodes(W, H);
+  draw();
+}
+
+function drawDevice(n, key, highlight) {
+  const { x, y, label, sub, type, color, bg } = n;
+  ctx.save();
+  if(highlight) { ctx.shadowColor = color; ctx.shadowBlur = 14; }
+
+  if(type === 'fw') {
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = highlight ? 2.5 : 1.5;
+    roundRect(ctx, x-34, y-22, 68, 44, 10);
+    ctx.fill(); ctx.stroke();
+    ctx.font = '500 11px var(--font-sans, sans-serif)';
+    ctx.fillStyle = color; ctx.textAlign = 'center';
+    ctx.fillText('🛡 '+label, x, y-4);
+    ctx.font = '400 9px var(--font-sans, sans-serif)';
+    ctx.fillStyle = '#999';
+    ctx.fillText(sub, x, y+8);
+  } else if(type === 'cloud') {
+    ctx.fillStyle = bg; ctx.strokeStyle = color; ctx.lineWidth = 1;
+    drawCloud(ctx, x, y, 38, 26);
+    ctx.font = '400 10px var(--font-sans, sans-serif)';
+    ctx.fillStyle = color; ctx.textAlign = 'center';
+    ctx.fillText(label, x, y+38);
+    ctx.fillStyle = '#aaa'; ctx.font = '400 9px sans-serif';
+    ctx.fillText(sub, x, y+50);
+  } else if(type === 'server') {
+    ctx.fillStyle = bg; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    roundRect(ctx, x-28, y-22, 56, 44, 8);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.font = '400 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('▪▪▪', x, y-6);
+    ctx.fillText('▪▪▪', x, y+6);
+    ctx.font = '400 9.5px var(--font-sans, sans-serif)';
+    ctx.fillStyle = '#555'; ctx.fillText(label, x, y+32);
+    ctx.fillStyle = '#aaa'; ctx.font = '400 8.5px sans-serif';
+    ctx.fillText(sub, x, y+43);
+  } else {
+    ctx.fillStyle = bg; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    roundRect(ctx, x-26, y-18, 52, 36, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.font = '400 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('⬛', x, y+2);
+    ctx.font = '400 9.5px var(--font-sans, sans-serif)';
+    ctx.fillStyle = '#555'; ctx.fillText(label, x, y+26);
+    ctx.fillStyle = '#aaa'; ctx.font = '400 8.5px sans-serif';
+    ctx.fillText(sub, x, y+36);
+  }
+  ctx.restore();
+}
+
+function drawCloud(ctx, cx, cy, rx, ry) {
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry*0.7, 0, 0, Math.PI*2);
+  ctx.ellipse(cx-rx*0.45, cy+ry*0.1, rx*0.55, ry*0.6, 0, 0, Math.PI*2);
+  ctx.ellipse(cx+rx*0.45, cy+ry*0.05, rx*0.55, ry*0.55, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w,y, x+w,y+h, r);
+  ctx.arcTo(x+w,y+h, x,y+h, r);
+  ctx.arcTo(x,y+h, x,y, r);
+  ctx.arcTo(x,y, x+w,y, r);
+  ctx.closePath();
+}
+
+function drawCable(from, to, color, dashed) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  const mx = (from.x+to.x)/2, my = (from.y+to.y)/2 - 20;
+  ctx.quadraticCurveTo(mx, my, to.x, to.y);
+  ctx.strokeStyle = color || '#cbd5e1';
+  ctx.lineWidth = dashed ? 1 : 1.5;
+  if(dashed) ctx.setLineDash([4,4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const r = 3.5;
+  ctx.fillStyle = color || '#94a3b8';
+  ctx.beginPath(); ctx.arc(from.x, from.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(to.x, to.y, r, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--surface-1').trim() || '#f9f9f9';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  drawGrid();
+  const fw = nodes.fw;
+  Object.entries(nodes).forEach(([k, n]) => {
+    if(k !== 'fw') drawCable(fw, n, '#cbd5e1', false);
+  });
+  packets.forEach(p => {
+    if(!p.done) {
+      ctx.save();
+      ctx.shadowColor = p.color; ctx.shadowBlur = 8;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.px, p.py, 5, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.fade);
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1.5;
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.result === 'ACCEPT' ? '✓' : '✕', p.px, p.py);
+      ctx.restore();
+    }
+  });
+  Object.entries(nodes).forEach(([k, n]) => {
+    const hl = packets.some(p => p.activeNode === k);
+    drawDevice(n, k, hl);
+  });
+}
+
+function drawGrid() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(150,150,150,0.07)';
+  ctx.lineWidth = 1;
+  for(let x=0; x<W; x+=20) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0; y<H; y+=20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+}
+
+let animId;
+function animate() {
+  let anyActive = false;
+  packets.forEach(p => {
+    if(!p.done) {
+      p.t += 0.018;
+      if(p.t >= 1 && !p.atFW) {
+        p.t = 0; p.atFW = true; p.activeNode = 'fw';
+        addLog(p.svc + ' → FortiGate: evaluating...', '#999');
+        setTimeout(() => {
+          p.dir = p.result === 'ACCEPT' ? 1 : -1;
+          p.t2 = 0; p.phase2 = true;
+        }, 400);
+      }
+      if(!p.atFW) {
+        p.activeNode = p.fromKey;
+        const t = ease(p.t);
+        p.px = lerp(p.fx, nodes.fw.x, t);
+        p.py = lerp(p.fy, nodes.fw.y, t);
+      } else if(p.phase2) {
+        p.t2 += 0.02;
+        if(p.result === 'ACCEPT') {
+          const t = ease(Math.min(p.t2, 1));
+          p.px = lerp(nodes.fw.x, p.tx, t);
+          p.py = lerp(nodes.fw.y, p.ty, t);
+          p.activeNode = p.t2 >= 1 ? p.toKey : 'fw';
+        } else {
+          p.px = nodes.fw.x + Math.sin(p.t2*12)*6*(1-p.t2);
+          p.py = nodes.fw.y + Math.cos(p.t2*8)*4*(1-p.t2);
+        }
+        if(p.t2 >= 1) {
+          p.done = true; p.fade = 1.5; p.activeNode = null;
+          addLog((p.result === 'ACCEPT' ? '✓ ACCEPT' : '✕ DENY') + ' — ' + p.svc, p.color);
+        }
+      }
+      anyActive = true;
+    } else if(p.fade > 0) {
+      p.fade -= 0.02; anyActive = true;
+    }
+  });
+  draw();
+  if(anyActive) animId = requestAnimationFrame(animate);
+  else { running = false; document.getElementById('run-btn').disabled = false; setStatus('Done','#10b981'); }
+}
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+function ease(t){ return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2; }
+
+let logLines = [];
+function addLog(msg, color) {
+  const p = document.getElementById('log-panel');
+  const d = document.createElement('div');
+  d.style.color = color || 'var(--text-secondary)';
+  d.textContent = '› ' + msg;
+  p.appendChild(d);
+  p.scrollTop = p.scrollHeight;
+}
+
+function setStatus(txt, color) {
+  document.getElementById('status-txt').textContent = txt;
+  document.getElementById('status-dot').style.background = color;
+}
+
+function runSim() {
+  if(running) return;
+  running = true;
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('log-panel').innerHTML = '';
+  packets = [];
+  const sc = SCENARIOS[document.getElementById('scenario-sel').value];
+  addLog('Running: ' + sc.name, 'var(--text-primary)');
+  setStatus('Simulating...','#f59e0b');
+  sc.packets.forEach((p, i) => {
+    const fn = nodes[p.from];
+    const tn = nodes[p.to];
+    if(!fn || !tn) return;
+    setTimeout(() => {
+      packets.push({ fromKey:p.from, toKey:p.to, svc:p.svc, result:p.expect,
+        color:p.color, fx:fn.x, fy:fn.y, tx:tn.x, ty:tn.y,
+        px:fn.x, py:fn.y, t:0, atFW:false, phase2:false, done:false, fade:0, activeNode:p.from });
+      if(i===0 && !animId) animId = requestAnimationFrame(animate);
+      addLog('Packet: ' + p.from + ' → ' + p.to + ' [' + p.svc + ']', '#6b7280');
+    }, i * 900);
+  });
+  setTimeout(() => { if(!running) return; animId = requestAnimationFrame(animate); }, 100);
+}
+
+function resetSim() {
+  cancelAnimationFrame(animId);
+  animId = null;
+  packets = [];
+  running = false;
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('log-panel').innerHTML = '';
+  setStatus('Ready','#10b981');
+  nodes = getNodes(W, H);
+  draw();
+}
+
+document.getElementById('scenario-sel').addEventListener('change', resetSim);
+window.addEventListener('resize', () => { ctx.setTransform(1,0,0,1,0,0); resize(); });
+resize();
+</script>
