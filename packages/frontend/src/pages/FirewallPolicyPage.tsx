@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { FirewallPolicy, TestPacket, PolicyTraceEntry, InterfaceZone, WebFilterProfile } from "@fortisim/engine";
 import { evaluatePacket } from "@fortisim/engine";
 import { PacketFlowPanel } from "../components/policyObjects/PacketFlowPanel";
+import { NetworkSimCanvas } from "../components/policyObjects/NetworkSimCanvas";
 import { NetworkTopology } from "../components/policyObjects/NetworkTopology";
 import { getSubmissionFeedback } from "../api/client";
 import { ScenarioSession } from "../hooks/useScenarioSession";
@@ -49,6 +50,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   const [testResults, setTestResults] = useState<{ packet: TestPacket; action: "ACCEPT" | "DENY"; matchedPolicyName: string | null }[]>([]);
   const [flowTraces, setFlowTraces] = useState<{ packet: TestPacket; trace: PolicyTraceEntry[]; finalAction: "ACCEPT" | "DENY" }[]>([]);
   const [activeFlow, setActiveFlow] = useState<{ srcZone: InterfaceZone; dstZone: InterfaceZone; action: "ACCEPT" | "DENY" } | null>(null);
+  const [showSim, setShowSim] = useState(false);
   const [grading, setGrading] = useState(false);
   const [gradeReport, setGradeReport] = useState<any>(null);
   const [aiRemark, setAiRemark] = useState<string | null>(null);
@@ -305,6 +307,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             <div className="flex gap-2">
               <button onClick={runTestConnectivity} className="px-3 py-1.5 border border-gray-300 rounded-sm text-[12.5px] text-gray-700 hover:bg-gray-50">Run Test Packets</button>
               <button onClick={runVisualPacketTest} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90">Run Packet Test (Visual)</button>
+              <button onClick={() => { runVisualPacketTest(); setShowSim(true); }} className="px-3 py-1.5 bg-gray-800 text-white rounded-sm text-[12.5px] hover:bg-gray-700">🌐 Network Sim</button>
             </div>
           </div>
           <p className="text-[11.5px] text-gray-400 mb-2">Runs instantly in your browser. Does not submit or grade your work.</p>
@@ -357,6 +360,14 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} />
       </div>
+
+      {showSim && (
+        <NetworkSimCanvas
+          addresses={addresses}
+          traces={flowTraces}
+          onClose={() => setShowSim(false)}
+        />
+      )}
     </div>
   );
 }
