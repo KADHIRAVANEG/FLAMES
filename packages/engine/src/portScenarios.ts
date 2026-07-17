@@ -152,6 +152,9 @@ export const portPositionTrapScenario: PortScenario = {
   ],
 };
 
+import { portFinalScenario } from "./finalAssignments";
+export { portFinalScenario };
+
 export const ALL_PORT_SCENARIOS: PortScenario[] = [
   portAssignmentScenario,
   portMultiDmzScenario,

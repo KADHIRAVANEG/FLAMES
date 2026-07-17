@@ -14,6 +14,7 @@ interface TaskEntry {
   description: string;
   track: "policy" | "interface" | "port";
   difficulty: number;
+  isFinal?: boolean;
 }
 
 const TRACK_META = {
@@ -49,7 +50,7 @@ export function TasksPage({ session }: TasksPageProps) {
   if (!policyScenarios) return <div className="text-gray-500 text-[12.5px]">Loading tasks…</div>;
 
   const ps = policyScenarios;
-  const tasks: TaskEntry[] = [
+  const regularTasks: TaskEntry[] = [
     { id: ALL_PORT_SCENARIOS[0].id, title: ALL_PORT_SCENARIOS[0].title, description: ALL_PORT_SCENARIOS[0].description, track: "port", difficulty: 1 },
     { id: ALL_INTERFACE_SCENARIOS[0].id, title: ALL_INTERFACE_SCENARIOS[0].title, description: ALL_INTERFACE_SCENARIOS[0].description, track: "interface", difficulty: 1 },
     { id: ALL_INTERFACE_SCENARIOS[1].id, title: ALL_INTERFACE_SCENARIOS[1].title, description: ALL_INTERFACE_SCENARIOS[1].description, track: "interface", difficulty: 2 },
@@ -68,14 +69,49 @@ export function TasksPage({ session }: TasksPageProps) {
     { id: ps[7]?.id, title: ps[7]?.title, description: ps[7]?.description, track: "policy", difficulty: 9 },
     { id: ps[8]?.id, title: ps[8]?.title, description: ps[8]?.description, track: "policy", difficulty: 9 },
     { id: ps[9]?.id, title: ps[9]?.title, description: ps[9]?.description, track: "policy", difficulty: 10 },
-  ].filter((t) => t.id).sort((a, b) => a.difficulty - b.difficulty);
+  ].filter((t) => t.id);
 
-  const completedCount = tasks.filter((t) => session.completedTaskIds.has(t.id)).length;
-  const progressPct = Math.round((completedCount / tasks.length) * 100);
-  const trackGroups: Record<string, TaskEntry[]> = { port: [], interface: [], policy: [] };
-  tasks.forEach((t) => trackGroups[t.track].push(t));
+  const finalTasks: TaskEntry[] = [
+    { id: "port-final-01", title: "🏆 Port Assignment Final", description: "The complete port challenge combining all concepts: redundant WAN, multi-server DMZ, large LAN, spare port, and a trick port.", track: "port", difficulty: 10, isFinal: true },
+    { id: ALL_INTERFACE_SCENARIOS[2].id, title: "🏆 Interface Config Final", description: "Configure all interfaces from scratch: IPs, subnets, and administrative access — the complete setup a network admin performs before writing policies.", track: "interface", difficulty: 10, isFinal: true },
+    { id: ps[10]?.id ?? "firewall-final-01", title: "🏆 Firewall Policy Final", description: "The ultimate challenge: multiple systems, DMZ servers, guest isolation, web filtering, and inter-zone security all in one.", track: "policy", difficulty: 10, isFinal: true },
+  ].filter((t) => t.id);
 
-  function handleSelect(task: TaskEntry) {
+  const trackGroups: Record<string, { regular: TaskEntry[]; final: TaskEntry | null }> = {
+    port: { regular: [], final: null },
+    interface: { regular: [], final: null },
+    policy: { regular: [], final: null },
+  };
+
+  regularTasks.forEach((t) => trackGroups[t.track].regular.push(t));
+  finalTasks.forEach((t) => { trackGroups[t.track].final = t; });
+
+  function isTrackComplete(track: string): boolean {
+    return trackGroups[track].regular.every((t) => session.completedTaskIds.has(t.id));
+  }
+
+  function isFinalUnlocked(track: string): boolean {
+    return isTrackComplete(track);
+  }
+
+  function isFinalCompleted(track: string): boolean {
+    const f = trackGroups[track].final;
+    return f ? session.completedTaskIds.has(f.id) : false;
+  }
+
+  function trackProgress(track: string): number {
+    if (isFinalCompleted(track)) return 100;
+    const regular = trackGroups[track].regular;
+    const done = regular.filter((t) => session.completedTaskIds.has(t.id)).length;
+    return Math.round((done / (regular.length + 1)) * 100);
+  }
+
+  const overallPct = Math.round(
+    (["port", "interface", "policy"].reduce((s, t) => s + trackProgress(t), 0)) / 3
+  );
+
+  function handleSelect(task: TaskEntry, locked = false) {
+    if (locked) return;
     if (task.track === "policy") {
       session.selectScenario(task.id);
       navigate("/policy/firewall-policy");
@@ -88,35 +124,39 @@ export function TasksPage({ session }: TasksPageProps) {
     <div className="max-w-4xl">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-forti-dark mb-1">FortiSim Training Tasks</h1>
-        <p className="text-gray-500 text-[12.5px]">Complete exercises across three tracks to master FortiGate firewall configuration.</p>
+        <p className="text-gray-500 text-[12.5px]">Complete all exercises in a track to unlock its Final Assignment. Pass the Final to mark the track 100%.</p>
       </div>
 
+      {/* Overall progress */}
       <div className="bg-white border border-gray-200 rounded-md p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[13px] font-semibold text-gray-700">Overall Progress</span>
-          <span className="text-[13px] font-bold text-forti-red">{completedCount} / {tasks.length} completed</span>
+          <span className="text-[13px] font-bold text-forti-red">{overallPct}%</span>
         </div>
         <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-forti-red rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          <div className="h-full bg-forti-red rounded-full transition-all duration-500" style={{ width: `${overallPct}%` }} />
         </div>
         <div className="flex justify-between mt-2">
           {(["port", "interface", "policy"] as const).map((track) => {
+            const pct = trackProgress(track);
             const meta = TRACK_META[track];
-            const done = trackGroups[track].filter((t) => session.completedTaskIds.has(t.id)).length;
             return (
               <div key={track} className="flex items-center gap-1.5 text-[11px] text-gray-500">
                 <div className={`w-2 h-2 rounded-full ${meta.dot}`}></div>
-                {meta.label}: {done}/{trackGroups[track].length}
+                {meta.label}: {pct}%
               </div>
             );
           })}
         </div>
       </div>
 
+      {/* Track groups */}
       {(["port", "interface", "policy"] as const).map((track) => {
         const meta = TRACK_META[track];
-        const trackTasks = trackGroups[track];
-        const done = trackTasks.filter((t) => session.completedTaskIds.has(t.id)).length;
+        const { regular, final } = trackGroups[track];
+        const pct = trackProgress(track);
+        const finalUnlocked = isFinalUnlocked(track);
+        const finalDone = isFinalCompleted(track);
         const isCollapsed = collapsed[track];
 
         return (
@@ -129,20 +169,23 @@ export function TasksPage({ session }: TasksPageProps) {
                 <span className="text-lg">{meta.icon}</span>
                 <div className="text-left">
                   <div className="text-[13.5px] font-semibold text-gray-800">{meta.label}</div>
-                  <div className="text-[11px] text-gray-400">{done}/{trackTasks.length} completed</div>
+                  <div className="text-[11px] text-gray-400">
+                    {finalDone ? "Complete ✓" : `${pct}% complete`}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${meta.dot}`} style={{ width: `${(done / trackTasks.length) * 100}%` }} />
+                  <div className={`h-full rounded-full transition-all duration-700 ${finalDone ? "bg-emerald-500" : meta.dot}`} style={{ width: `${pct}%` }} />
                 </div>
+                <span className="text-[11px] font-bold text-gray-500">{pct}%</span>
                 <span className="text-gray-400 text-[12px]">{isCollapsed ? "▶" : "▼"}</span>
               </div>
             </button>
 
             {!isCollapsed && (
               <div className="border border-t-0 border-gray-200 rounded-b-md overflow-hidden">
-                {trackTasks.map((task, idx) => {
+                {regular.map((task, idx) => {
                   const completed = session.completedTaskIds.has(task.id);
                   return (
                     <div
@@ -157,7 +200,7 @@ export function TasksPage({ session }: TasksPageProps) {
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className={`text-[13px] font-medium ${completed ? "text-emerald-700" : "text-gray-800"}`}>{task.title}</span>
                           <DifficultyStars level={task.difficulty} />
-                          {completed && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium border border-emerald-200">Completed</span>}
+                          {completed && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium border border-emerald-200">Done</span>}
                         </div>
                         <p className="text-[11.5px] text-gray-500 leading-relaxed line-clamp-2">{task.description}</p>
                       </div>
@@ -165,6 +208,38 @@ export function TasksPage({ session }: TasksPageProps) {
                     </div>
                   );
                 })}
+
+                {/* Final Assignment */}
+                {final && (
+                  <div
+                    onClick={() => finalUnlocked && handleSelect(final)}
+                    className={`flex items-start gap-3 px-4 py-4 border-t-2 transition-colors ${
+                      finalDone ? "bg-emerald-50 border-emerald-300 cursor-pointer hover:bg-emerald-100"
+                      : finalUnlocked ? "bg-amber-50 border-amber-300 cursor-pointer hover:bg-amber-100"
+                      : "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[15px] shrink-0 mt-0.5 ${
+                      finalDone ? "bg-emerald-500" : finalUnlocked ? "bg-amber-400" : "bg-gray-300"
+                    }`}>
+                      {finalDone ? "✓" : finalUnlocked ? "🏆" : "🔒"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-[13.5px] font-bold ${finalDone ? "text-emerald-700" : finalUnlocked ? "text-amber-800" : "text-gray-400"}`}>
+                          {final.title}
+                        </span>
+                        {finalDone && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold border border-emerald-300">Track Complete!</span>}
+                        {finalUnlocked && !finalDone && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium border border-amber-200">Unlocked</span>}
+                        {!finalUnlocked && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 border border-gray-200">Complete all tasks to unlock</span>}
+                      </div>
+                      <p className={`text-[11.5px] leading-relaxed line-clamp-2 ${finalDone ? "text-emerald-600" : finalUnlocked ? "text-amber-700" : "text-gray-400"}`}>
+                        {final.description}
+                      </p>
+                    </div>
+                    {finalUnlocked && !finalDone && <div className="shrink-0 text-amber-400 text-[16px] mt-1">›</div>}
+                  </div>
+                )}
               </div>
             )}
           </div>
