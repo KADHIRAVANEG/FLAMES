@@ -91,7 +91,7 @@ export function TasksPage({ session }: TasksPageProps) {
   }
 
   function isFinalUnlocked(track: string): boolean {
-    return isTrackComplete(track);
+    return true; // Final is always accessible
   }
 
   function isFinalCompleted(track: string): boolean {
@@ -103,7 +103,7 @@ export function TasksPage({ session }: TasksPageProps) {
     if (isFinalCompleted(track)) return 100;
     const regular = trackGroups[track].regular;
     const done = regular.filter((t) => session.completedTaskIds.has(t.id)).length;
-    return Math.round((done / (regular.length + 1)) * 100);
+    return Math.round((done / regular.length) * 99); // max 99% until final passed
   }
 
   const overallPct = Math.round(
@@ -213,16 +213,15 @@ export function TasksPage({ session }: TasksPageProps) {
                 {final && (
                   <div
                     onClick={() => finalUnlocked && handleSelect(final)}
-                    className={`flex items-start gap-3 px-4 py-4 border-t-2 transition-colors ${
-                      finalDone ? "bg-emerald-50 border-emerald-300 cursor-pointer hover:bg-emerald-100"
-                      : finalUnlocked ? "bg-amber-50 border-amber-300 cursor-pointer hover:bg-amber-100"
-                      : "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
+                    className={`flex items-start gap-3 px-4 py-4 border-t-2 transition-colors cursor-pointer ${
+                      finalDone ? "bg-emerald-50 border-emerald-300 hover:bg-emerald-100"
+                      : "bg-amber-50 border-amber-300 hover:bg-amber-100"
                     }`}
                   >
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[15px] shrink-0 mt-0.5 ${
-                      finalDone ? "bg-emerald-500" : finalUnlocked ? "bg-amber-400" : "bg-gray-300"
+                      finalDone ? "bg-emerald-500" : "bg-amber-400"
                     }`}>
-                      {finalDone ? "✓" : finalUnlocked ? "🏆" : "🔒"}
+                      {finalDone ? "✓" : "🏆"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -231,13 +230,13 @@ export function TasksPage({ session }: TasksPageProps) {
                         </span>
                         {finalDone && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold border border-emerald-300">Track Complete!</span>}
                         {finalUnlocked && !finalDone && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium border border-amber-200">Unlocked</span>}
-                        {!finalUnlocked && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 border border-gray-200">Complete all tasks to unlock</span>}
+                        {!finalDone && <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium border border-amber-200">Final Assignment</span>}
                       </div>
-                      <p className={`text-[11.5px] leading-relaxed line-clamp-2 ${finalDone ? "text-emerald-600" : finalUnlocked ? "text-amber-700" : "text-gray-400"}`}>
+                      <p className={`text-[11.5px] leading-relaxed line-clamp-2 ${finalDone ? "text-emerald-600" : "text-amber-700"}`}>
                         {final.description}
                       </p>
                     </div>
-                    {finalUnlocked && !finalDone && <div className="shrink-0 text-amber-400 text-[16px] mt-1">›</div>}
+                    {!finalDone && <div className="shrink-0 text-amber-400 text-[16px] mt-1">›</div>}
                   </div>
                 )}
               </div>

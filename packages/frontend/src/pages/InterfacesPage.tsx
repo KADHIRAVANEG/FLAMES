@@ -33,9 +33,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   const [activePortScenarioId, setActivePortScenarioId] = useState<string>(
     urlTrack === "port" && urlScenario ? urlScenario : ALL_PORT_SCENARIOS[0].id
   );
-  const portScenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId)!;
+  const portScenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId);
   const [portAssignments, setPortAssignments] = useState<PortAssignment[]>(
-    portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked }))
+    portScenario ? portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })) : []
   );
   const [portGrading, setPortGrading] = useState(false);
   const [portReport, setPortReport] = useState<PortGradingReport | null>(null);
@@ -104,6 +104,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   }
 
   async function submitPortGrading() {
+    if (!portScenario) return;
     setPortGrading(true);
     setPortReport(null);
     setPortError(null);
@@ -280,8 +281,8 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
       {track === "port" && (
         <>
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-5">
-            <div className="text-[13px] font-semibold text-amber-900 mb-1">{portScenario.title}</div>
-            <p className="text-[12.5px] text-amber-800 leading-relaxed">{portScenario.description}</p>
+            <div className="text-[13px] font-semibold text-amber-900 mb-1">{portScenario?.title}</div>
+            <p className="text-[12.5px] text-amber-800 leading-relaxed">{portScenario?.description}</p>
           </div>
 
           {!cameFromTask && (
@@ -311,7 +312,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
           )}
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
-            <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario.title}</div>
+            <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario?.title}</div>
             <ChassisDiagram ports={portAssignments} onChange={handlePortChange} />
           </div>
 
