@@ -40,6 +40,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   );
   const [portGrading, setPortGrading] = useState(false);
   const [portReport, setPortReport] = useState<PortGradingReport | null>(null);
+  const [portAiRemark, setPortAiRemark] = useState<string | null>(null);
   const [portError, setPortError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,17 +109,19 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
     if (!portScenario) return;
     setPortGrading(true);
     setPortReport(null);
+    setPortAiRemark(null);
     setPortError(null);
     try {
-      const res = await fetch(`/api/port-submissions/${portScenario.id}/grade`, {
+      const res = await fetch(`/api/port-submissions/${portScenario.id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioId: portScenario.id, assignments: portAssignments.map(({ portId, zone }) => ({ portId, zone })) }),
       });
       if (!res.ok) throw new Error("Grading request failed");
       const result = await res.json();
-      setPortReport(result);
-      if (result?.overallPassed) {
+      setPortReport(result.report ?? result);
+      setPortAiRemark(result.aiRemark ?? null);
+      if ((result.report ?? result)?.overallPassed) {
         session.markTaskComplete(portScenario.id);
       }
     } catch (err: any) {
@@ -341,6 +344,12 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {portAiRemark && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[12.5px] text-amber-900 mt-3">
+                <div className="font-medium mb-1">Tutor feedback</div>
+                {portAiRemark}
               </div>
             )}
           </div>
