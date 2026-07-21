@@ -56,7 +56,6 @@ explains *why* something is wrong without ever stating the correct value.
 
 ```mermaid
 flowchart TB
-    %% Styling Definitions
     classDef frontend fill:#333,stroke:#666,stroke-width:2px,color:#fff;
     classDef backend fill:#222,stroke:#444,stroke-width:2px,color:#fff;
     classDef engine fill:#8e44ad,stroke:#fff,stroke-width:2px,color:#fff;
@@ -74,7 +73,7 @@ flowchart TB
         Eval(Evaluate):::process
         Ret(Retrieve):::process
         Diag(Request Diagnostics):::process
-        Key[(Answer Keys &<br/>NIM API Key)]:::keys
+        Key[(Answer Keys & NIM API Key)]:::keys
         ServEng[Server Engine Instance]:::engine
     end
 
@@ -82,7 +81,6 @@ flowchart TB
         NIM[NVIDIA NIM AI Service]:::external
     end
 
-    %% Flow Connections
     UI -- User Submission --> API
     UI -- Simulate --> LocEng
     UI -- Result --> API
@@ -95,7 +93,6 @@ flowchart TB
     Ret --> Key
     Diag --> NIM
     NIM -- Feedback --> API
-
 ```
 ## Running locally
 
