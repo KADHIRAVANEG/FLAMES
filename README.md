@@ -1,4 +1,4 @@
-# FLAMES - Firewall Learning And Moniering Engine Simulater
+# FLAMES - Firewall Learning And Monitoring Engine Simulater
 
 An interactive web-based training platform where students learn firewall and
 network configuration by working in a FortiOS-styled interface, get graded
