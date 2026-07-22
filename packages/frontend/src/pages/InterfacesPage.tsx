@@ -130,7 +130,8 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   return (
     <div className="max-w-4xl">
       {cameFromTask && (
-        <Link to="/" className="inline-block text-[12px] text-forti-red hover:underline mb-3">
+        
++      <Link to={`/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
           ← Back to Tasks
         </Link>
       )}
