@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppShell } from "./components/shell/AppShell";
-import { TasksPage } from "./pages/TasksPage";
+import { BlankPage } from "./pages/BlankPage";
+import { TrackTasksPage } from "./pages/TrackTasksPage";
 import { FirewallPolicyPage } from "./pages/FirewallPolicyPage";
 import { AddressesPage } from "./pages/AddressesPage";
 import { ServicesPage } from "./pages/ServicesPage";
@@ -14,7 +15,10 @@ export default function App() {
     <BrowserRouter>
       <AppShell>
         <Routes>
-          <Route path="/" element={<TasksPage session={session} />} />
+          <Route path="/" element={<BlankPage />} />
+          <Route path="/tasks/policy" element={<TrackTasksPage session={session} track="policy" />} />
+          <Route path="/tasks/interface" element={<TrackTasksPage session={session} track="interface" />} />
+          <Route path="/tasks/port" element={<TrackTasksPage session={session} track="port" />} />
           <Route path="/policy/firewall-policy" element={<FirewallPolicyPage session={session} />} />
           <Route path="/policy/addresses" element={<AddressesPage session={session} />} />
           <Route path="/policy/services" element={<ServicesPage session={session} />} />

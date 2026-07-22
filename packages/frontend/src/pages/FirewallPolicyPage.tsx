@@ -148,7 +148,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
     <div className="grid grid-cols-[1fr_300px] gap-5 max-w-[1400px]">
       <div>
         <div className="mb-4">
-          <Link to="/" className="inline-flex items-center gap-1 text-[11.5px] text-forti-red hover:underline mb-2">← Back to Tasks</Link>
+          <Link to="/tasks/policy" className="inline-flex items-center gap-1 text-[11.5px] text-forti-red hover:underline mb-2">← Back to Tasks</Link>
           <h1 className="text-lg font-bold text-forti-dark">Firewall Policy</h1>
         </div>
 
