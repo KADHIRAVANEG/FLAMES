@@ -25,12 +25,12 @@ function findBreadcrumb(pathname: string): string[] {
     }
     if (pathname === item.path) return [item.label];
   }
-  return ["Tasks"];
+  return ["FortiSim"];
 }
 
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "/policy": true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const breadcrumb = findBreadcrumb(location.pathname);
 
   return (
@@ -51,7 +51,7 @@ export function AppShell({ children }: AppShellProps) {
             const Icon = ICONS[item.icon];
             const active = isActive(location.pathname, item);
             const hasChildren = !!item.children;
-            const open = expanded[item.path] ?? false;
+            const open = expanded[item.path] ?? active;
 
             const rowClasses = [
               "flex items-center gap-2.5 px-4 py-2 cursor-pointer transition-colors select-none",
@@ -67,6 +67,11 @@ export function AppShell({ children }: AppShellProps) {
                     viewBox="0 0 12 12"
                     className={`w-3 h-3 stroke-current fill-none transition-transform ${open ? "rotate-90" : ""}`}
                     strokeWidth={1.6}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setExpanded((s) => ({ ...s, [item.path]: !open }));
+                    }}
                   >
                     <path d="M4 2.5 8 6l-4 3.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -76,15 +81,13 @@ export function AppShell({ children }: AppShellProps) {
 
             return (
               <div key={item.path}>
-                {hasChildren ? (
-                  <div className={rowClasses} onClick={() => setExpanded((s) => ({ ...s, [item.path]: !open }))}>
-                    {content}
-                  </div>
-                ) : (
-                  <Link to={item.path} className={rowClasses}>
-                    {content}
-                  </Link>
-                )}
+                <Link
+                  to={item.path}
+                  className={rowClasses}
+                  onClick={() => setExpanded((s) => ({ ...s, [item.path]: true }))}
+                >
+                  {content}
+                </Link>
 
                 {hasChildren && open && (
                   <div className="pb-1">
