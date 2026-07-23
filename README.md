@@ -1,10 +1,10 @@
 # FLAMES - Firewall Learning And Monitoring Engine Simulater
 
-An interactive web-based training platform where students learn firewall and
-network configuration by working in a FortiOS-styled interface, get graded
-on the *behavior* and *correctness* of their configuration (not exact text
-matching), and receive Socratic, non-answer-revealing hints from an AI tutor
-(NVIDIA NIM) when they get something wrong.
+>An interactive web-based training platform where students learn firewall and
+>network configuration by working in a FortiOS-styled interface, get graded
+>on the *behavior* and *correctness* of their configuration (not exact text
+>matching), and receive Socratic, non-answer-revealing hints from an AI tutor
+>when they get something wrong.
 
 Built for classroom use alongside a real FortiGate 6000F lab unit, so the
 visual language and workflow are intentionally modeled on the real FortiOS
@@ -48,11 +48,6 @@ tutor (via NVIDIA NIM) gives conceptual, non-prescriptive feedback: it
 explains *why* something is wrong without ever stating the correct value.
 
 ## Project structure
-
-
-
-
-
 
 ```mermaid
 flowchart TB
