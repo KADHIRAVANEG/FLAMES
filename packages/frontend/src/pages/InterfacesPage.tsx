@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import type { AdminAccess, InterfaceConfig, InterfaceGradingReport, PortGradingReport } from "@fortisim/engine";
-import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS } from "@fortisim/engine";
+import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, portFinalScenario } from "@fortisim/engine";
+const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
 import { ChassisDiagram } from "../components/policyObjects/ChassisDiagram";
 import type { PortZone, PortAssignment } from "../components/policyObjects/ChassisDiagram";
 import { InterfaceTopology } from "../components/policyObjects/InterfaceTopology";
@@ -33,7 +34,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   const [activePortScenarioId, setActivePortScenarioId] = useState<string>(
     urlTrack === "port" && urlScenario ? urlScenario : ALL_PORT_SCENARIOS[0].id
   );
-  const portScenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId);
+  const portScenario = ALL_PORT_SCENARIOS_AND_FINAL.find((s) => s.id === activePortScenarioId);
   const [portAssignments, setPortAssignments] = useState<PortAssignment[]>(
     portScenario ? portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })) : []
   );
@@ -52,7 +53,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   }, [activeIfaceScenarioId]);
 
   useEffect(() => {
-    const scenario = ALL_PORT_SCENARIOS.find((s) => s.id === activePortScenarioId);
+    const scenario = ALL_PORT_SCENARIOS_AND_FINAL.find((s) => s.id === activePortScenarioId);
     if (scenario) {
       setPortAssignments(scenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })));
       setPortReport(null);
