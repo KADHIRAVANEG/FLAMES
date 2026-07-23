@@ -161,4 +161,5 @@ export const ALL_PORT_SCENARIOS: PortScenario[] = [
   portRedundantWanScenario,
   portLargeOfficeScenario,
   portPositionTrapScenario,
+  portFinalScenario,
 ];
