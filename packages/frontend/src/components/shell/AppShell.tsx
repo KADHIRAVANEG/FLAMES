@@ -7,6 +7,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { NAV_STRUCTURE, NavItem } from "./navConfig";
 import { ICONS } from "./icons";
+import { ChatTutorWidget } from "../ChatTutorWidget";
 
 interface AppShellProps {
   children: ReactNode;
@@ -143,6 +144,8 @@ export function AppShell({ children }: AppShellProps) {
 
         <main className="flex-1 overflow-y-auto p-5">{children}</main>
       </div>
+
+      <ChatTutorWidget />
     </div>
   );
 }

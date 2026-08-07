@@ -37,3 +37,22 @@ export async function getSubmissionFeedback(
   if (!res.ok) throw new Error("Feedback request failed");
   return res.json();
 }
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export async function sendChatMessage(messages: ChatMessage[]): Promise<string> {
+  const res = await fetch("/api/chat-tutor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? "Chat request failed");
+  }
+  const data = await res.json();
+  return data.reply as string;
+}

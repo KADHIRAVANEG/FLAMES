@@ -1,3 +1,6 @@
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -7,6 +10,7 @@ import { scenariosRouter } from "./routes/scenarios";
 import { submissionsRouter } from "./routes/submissions";
 import { interfaceSubmissionsRouter } from "./routes/interfaceSubmissions";
 import { portSubmissionsRouter } from "./routes/portSubmissions";
+import { chatTutorRouter } from "./routes/chatTutor";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,6 +22,7 @@ app.use("/api/scenarios", scenariosRouter);
 app.use("/api/submissions", submissionsRouter);
 app.use("/api/interface-submissions", interfaceSubmissionsRouter);
 app.use("/api/port-submissions", portSubmissionsRouter);
+app.use("/api/chat-tutor", chatTutorRouter);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
