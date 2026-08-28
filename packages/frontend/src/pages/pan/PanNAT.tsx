@@ -51,6 +51,7 @@ export function PanNAT({ session }: { session: PanSession }) {
   const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
   const [kqLocked, setKqLocked] = useState(false);
 
+
   function addRule() {
     if (!nr.name||!nr.translated) return;
     setRules(r=>[...r,{ id:nextId, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
@@ -164,6 +165,26 @@ export function PanNAT({ session }: { session: PanSession }) {
             </div>
           )}
 
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
+              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
+              <button onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
+            </div>
+            {results && (
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===scenario.checks.length?"#166534":"#dc2626" }}>
+                  {passed===scenario.checks.length?"✓ Passed!":"Not yet"} — {passed}/{scenario.checks.length}
+                </div>
+                {results.map((r,i)=>(
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
+                    <span style={{ color:"#374151" }}>{r.desc}</span>
+                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600, background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>{r.pass?"PASS":"FAIL"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {(aiFeedback||loadingFeedback)&&(
             <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:14, marginBottom:12 }}>
               <div style={{ fontSize:12, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>Tutor Feedback</div>
@@ -197,25 +218,7 @@ export function PanNAT({ session }: { session: PanSession }) {
               {kqResult==="incorrect"&&<div style={{ marginTop:6, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — locked.</div>}
             </>)}
           </div>
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===scenario.checks.length?"#166534":"#dc2626" }}>
-                  {passed===scenario.checks.length?"✓ Passed!":"Not yet"} — {passed}/{scenario.checks.length}
-                </div>
-                {results.map((r,i)=>(
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
-                    <span style={{ color:"#374151" }}>{r.desc}</span>
-                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600, background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>{r.pass?"PASS":"FAIL"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+
         </div>
 
         <div>
