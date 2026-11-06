@@ -23,7 +23,7 @@ For each native task, record vendor/task ID, guide/instruction review, correct s
 
 For hardware, record model orientation, zoom, front/rear socket mapping, touch drag, ten-second idle resume, reduced-motion behavior, WebGL failure/retry and mobile framing. Browser software WebGL evidence is separate from this actual-device sign-off.
 
-Issues [8](https://github.com/JOKER-53/FLAMES/issues/8), [9](https://github.com/JOKER-53/FLAMES/issues/9) and [14](https://github.com/JOKER-53/FLAMES/issues/14) need the deployed services. Issues [11](https://github.com/JOKER-53/FLAMES/issues/11), [12](https://github.com/JOKER-53/FLAMES/issues/12) and [13](https://github.com/JOKER-53/FLAMES/issues/13) retain human/device/pilot acceptance. Excluding AWS deployment does not make these checks complete.
+Issues [8](https://github.com/KADHIRAVANEG/FLAMES/issues/8), [9](https://github.com/KADHIRAVANEG/FLAMES/issues/9) and [14](https://github.com/KADHIRAVANEG/FLAMES/issues/14) need the deployed services. Issues [11](https://github.com/KADHIRAVANEG/FLAMES/issues/11), [12](https://github.com/KADHIRAVANEG/FLAMES/issues/12) and [13](https://github.com/KADHIRAVANEG/FLAMES/issues/13) retain human/device/pilot acceptance. Excluding AWS deployment does not make these checks complete.
 
 ## Automated evidence, 2026-10-26
 

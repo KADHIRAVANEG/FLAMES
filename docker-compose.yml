@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: packages/backend/Dockerfile
     ports:
-      - "127.0.0.1:4000:4000"
+      - "0.0.0.0:4000:4000"
     env_file:
       - packages/backend/.env
     environment:
@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: packages/frontend/Dockerfile
     ports:
-      - "127.0.0.1:5173:5173"
+      - "0.0.0.0:5173:5173"
     environment:
       - API_PROXY_TARGET=http://backend:4000
     depends_on:
