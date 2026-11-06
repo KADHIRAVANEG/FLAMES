@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { SiteLayout } from "../components/shell/SiteLayout";
 
 const contributors = [
-  { name: "KADHIRAVAN EG", handle: "JOKER-53", initials: "KE", github: "https://github.com/JOKER-53", linkedin: "https://www.linkedin.com/in/kadhiravan-e-g/" },
+  { name: "KADHIRAVAN EG", handle: "KADHIRAVANEG", initials: "KE", github: "https://github.com/KADHIRAVANEG", linkedin: "https://www.linkedin.com/in/kadhiravan-e-g/" },
   { name: "Harish Kumar", handle: "Harishkumar-47", initials: "HK", github: "https://github.com/Harishkumar-47", linkedin: "https://www.linkedin.com/in/harish-kumar-vs/" },
 ];
 const externalLink = "inline-flex items-center rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-body hover:bg-sunken hover:text-ink";

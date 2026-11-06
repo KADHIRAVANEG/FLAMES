@@ -379,7 +379,7 @@ Validation: `npm run verify` passed 56 engine, 97 backend, and 37 frontend tests
 
 ## 51. Contributor and organization credits
 
-Added the public `/credits` page for KADHIRAVAN EG (`JOKER-53`), Harish Kumar (`Harishkumar-47`), and BeyondBug. Included the supplied contributor GitHub/LinkedIn profiles and organization repositories/LinkedIn links, with safe new-tab behavior and descriptive accessible names. The page uses the existing FLAMES layout, typography, responsive spacing, and light/dark theme. Credits links are available in the site footer and both course navigation footers. No biographies, titles, or achievements beyond the supplied contributor identities were invented.
+Added the public `/credits` page for KADHIRAVAN EG (`KADHIRAVANEG`), Harish Kumar (`Harishkumar-47`), and BeyondBug. Included the supplied contributor GitHub/LinkedIn profiles and organization repositories/LinkedIn links, with safe new-tab behavior and descriptive accessible names. The page uses the existing FLAMES layout, typography, responsive spacing, and light/dark theme. Credits links are available in the site footer and both course navigation footers. No biographies, titles, or achievements beyond the supplied contributor identities were invented.
 
 Validation: production frontend build passed; targeted Chromium and Firefox browser checks passed for page navigation, all six link destinations, mobile/desktop overflow, and light/dark accessibility. Reviewed the rendered desktop page. Updated application-flow documentation.
 
