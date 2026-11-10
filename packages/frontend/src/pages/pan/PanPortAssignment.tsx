@@ -15,7 +15,11 @@ const zoneOf = (p: PPA[], id: string) => p.find(x => x.id === id)?.zone;
 const inZone = (id: string, zone: PanPortZone): Check => ({ desc: `${id} in ${zone}`, fn: p => zoneOf(p, id) === zone });
 const othersUnassigned = (used: string[]): Check => ({
   desc: "All other data ports left unassigned",
-  fn: p => p.filter(x => x.id.startsWith("ethernet") && !used.includes(x.id)).every(x => x.zone === "unassigned"),
+  // Only pass once the required ports are actually assigned; this prevents
+  // the check from trivially passing on the initial "all unassigned" state.
+  fn: p =>
+    used.every(id => zoneOf(p, id) !== "unassigned") &&
+    p.filter(x => x.id.startsWith("ethernet") && !used.includes(x.id)).every(x => x.zone === "unassigned"),
 });
 
 const SCENARIOS: { id: string; title: string; description: string; checks: Check[] }[] = [
